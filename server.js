@@ -47,14 +47,15 @@ async function queryPrometheus(query) {
 
 // Collect Kubernetes & Prometheus Metrics
 async function collectMetrics() {
+  const podName  = 'mongodb-deployment-6d9d7c68f6-cdz8m'
   const timestamp = new Date().toISOString();
-  const network_latency = await queryPrometheus("histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[5m]))");
-  const packet_loss = await queryPrometheus("rate(node_network_receive_drop_total[5m])");
-  const node_status = await runCommand("kubectl get nodes -o wide");
-  const disk_io = await queryPrometheus("node_disk_io_time_seconds_total");
-  const cpu_load = await queryPrometheus("node_load1");
-  const api_latency = await queryPrometheus("histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))");
-  const request_errors = await queryPrometheus('sum(rate(http_requests_total{status=~"5.."}[5m]))');
+  const network_latency = await queryPrometheus(`histogram_quantile(0.99, rate(http_request_duration_seconds_bucket{pod="${podName}"}[1m]))`);
+  const packet_loss = await queryPrometheus(`rate(node_network_receive_drop_total{pod="${podName}"}[1m])`);
+  const node_status = await runCommand(`kubectl get pod ${podName} --no-headers -o custom-columns=STATUS:.status.phase`);
+  const disk_io = await queryPrometheus(`node_disk_io_time_seconds_total{pod="${podName}"}`);
+  const cpu_load = await queryPrometheus(`node_load1{pod="${podName}"}`);
+  const api_latency = await queryPrometheus(`histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{pod="${podName}"}[1m]))`);
+  const request_errors = await queryPrometheus(`sum(rate(http_requests_total{pod="${podName}", status=~"5.."}[1m]))`);
 
   const row = {
     timestamp,
@@ -66,7 +67,7 @@ async function collectMetrics() {
     api_latency,
     request_errors
   };
-
+  console.log(row);
   await csvWriter.writeRecords([row]);
   console.log("Metrics collected and saved!");
 }
@@ -93,12 +94,14 @@ app.get("/collect-metrics", async (req, res) => {
 app.get("/keepcollecting-metrics", (req, res) => {
   const interval = setInterval(async () => {
     await collectMetrics();
+    console.log("Metrics collecting");
   }, 60000); 
 
   res.send("Scheduled continuous metric collection.");
 })
 
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
+  await collectMetrics();
   console.log(`Server running on http://localhost:${PORT}`);
 });
