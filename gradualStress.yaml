@@ -1,0 +1,19 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: StressChaos
+metadata:
+  name: gradual-memory-stress
+  namespace: chaos-mesh  # Namespace where Chaos Mesh is installed
+spec:
+  mode: one              # Target one pod randomly
+  duration: "2m"        # Total experiment duration (10 minutes)
+  selector:
+    labelSelectors:
+      app: test
+  stressors:
+    memory:
+      workers: 1
+      size: "1GB"        # Final memory to occupy (starts at 0 and increases linearly)
+      # time: "5m"         # Time to reach 1GB (gradual increase over 5 minutes)
+    cpu:
+      workers: 1
+      load: 80           # CPU load to reach (starts at 0 and increases linearly)

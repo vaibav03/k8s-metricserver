@@ -53,11 +53,13 @@ async function collectMetrics() {
   const podNames = await runCommand(`kubectl get pods --no-headers -o custom-columns=NAME:.metadata.name`);
   const pods = podNames.split('\n');
   for (const podName of pods) {
+    if(podName.split("-")[0]!='createpod')   continue; 
+
     const network_latency = await queryPrometheus(`histogram_quantile(0.99, rate(http_request_duration_seconds_bucket{pod="${podName}"}[1m]))`);
     const packet_loss = await queryPrometheus(`increase(node_network_receive_drop_total{pod="${podName}"}[1m])`);
     const memory_usage = await queryPrometheus(`avg_over_time(container_memory_usage_bytes{pod="${podName}"}[1m])`);               // done 
-    const cpu_load = await queryPrometheus(`rate(container_cpu_usage_seconds_total{pod="${podName}"}[1m])`);                      //done
-    const api_latency = await queryPrometheus(`increase(prometheus_http_request_duration_seconds_count[1m])`);      // done
+    const cpu_load = await queryPrometheus(`rate(container_cpu_usage_seconds_total{pod="${podName}"}[1m])`);                      
+    const api_latency = await queryPrometheus(`increase(prometheus_http_request_duration_seconds_count[1m])`);     
     const request_errors = await queryPrometheus(`increase(prometheus_http_requests_total{pod="prometheus-monitoring-kube-prometheus-prometheus-0" , code=~"5.."}[1m])`); // done
     const node_status = await runCommand(`kubectl get pod ${podName} -o jsonpath='{.status.phase}'`);                             //done
     const disk_io = await queryPrometheus(`increase(node_disk_io_time_seconds_total{pod="${podName}"}[1m])`); // done
@@ -81,14 +83,14 @@ async function collectMetrics() {
 }
 
 
-app.get("/keepcollecting-metrics", (req, res) => {
-  const interval = setInterval(async () => {
-    await getAllPods();
-    console.log("Metrics collecting");
-  }, 60000);
+// app.get("/keepcollecting-metrics", (req, res) => {
+//   const interval = setInterval(async () => {
+//     await getAllPods();
+//     console.log("Metrics collecting");
+//   }, 60000);
 
-  res.send("Scheduled continuous metric collection.");
-})
+//   res.send("Scheduled continuous metric collection.");
+// })
 
 
 app.listen(PORT, async () => {
@@ -96,6 +98,6 @@ app.listen(PORT, async () => {
   const interval = setInterval(async () => {
     await collectMetrics();
     console.log("Metrics collecting");
-  }, 60000);
+  }, 1000);
   console.log(`Server running on http://localhost:${PORT}`);
 });

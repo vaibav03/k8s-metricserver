@@ -6,6 +6,7 @@ metadata:
 spec:
   action: pod-kill
   mode: one
+  duration: "30s"
   selector:
     namespaces:
       - default
@@ -13,4 +14,3 @@ spec:
       app: mongodb
   # scheduler:
   #   cron: "@every 1m"
-  # duration: "30s"
