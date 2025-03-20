@@ -19,3 +19,4 @@ POD=$(kubectl get pods --no-headers | awk '{print $1}' | head -n 1)
 kubectl delete pod $POD
 
 echo "Failures simulated!"
+
