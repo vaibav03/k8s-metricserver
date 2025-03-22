@@ -1,0 +1,68 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: Workflow
+metadata:
+  name: gradual-stress-experiment
+  namespace: chaos-mesh
+spec:
+  entry: "stress-sequence"
+  templates:
+    - name: "stress-sequence"
+      templateType: "Serial"
+      children:
+        - "stress-level-1"
+        - "stress-level-2"
+        - "stress-level-3"
+
+    - name: "stress-level-1"
+      templateType: "StressChaos"
+      deadline: "60s"
+      stressChaos:
+        mode: one
+        selector:
+          namespaces:
+            - default
+          labelSelectors:
+            app: test
+        stressors:
+          cpu:
+            workers: 2
+            load: 30
+          memory:
+            workers: 2
+            size: "500MB"
+
+    - name: "stress-level-2"
+      templateType: "StressChaos"
+      deadline: "60s"
+      stressChaos:
+        mode: one
+        selector:
+          namespaces:
+            - default
+          labelSelectors:
+            app: test
+        stressors:
+          cpu:
+            workers: 4
+            load: 50
+          memory:
+            workers: 4
+            size: "1GB"
+
+    - name: "stress-level-3"
+      templateType: "StressChaos"
+      deadline: "60s"
+      stressChaos:
+        mode: one
+        selector:
+          namespaces:
+            - default
+          labelSelectors:
+            app: test
+        stressors:
+          cpu:
+            workers: 6
+            load: 80
+          memory:
+            workers: 6
+            size: "2GB"

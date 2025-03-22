@@ -1,19 +1,47 @@
 apiVersion: chaos-mesh.org/v1alpha1
 kind: StressChaos
 metadata:
-  name: gradual-memory-stress
-  namespace: chaos-mesh  # Namespace where Chaos Mesh is installed
+  name: gradual-cpu-memory-stress
+  namespace: chaos-mesh  
 spec:
-  mode: one              # Target one pod randomly
-  duration: "2m"        # Total experiment duration (10 minutes)
+  mode: one              
+  duration: "2m"         # Increase duration to allow gradual stress
   selector:
+    namespaces:
+      - default
     labelSelectors:
       app: test
+  scheduler:
+    cron: "@every 30s"   # Apply increasing stress every 30 seconds
   stressors:
-    memory:
-      workers: 1
-      size: "1GB"        # Final memory to occupy (starts at 0 and increases linearly)
-      # time: "5m"         # Time to reach 1GB (gradual increase over 5 minutes)
     cpu:
-      workers: 1
-      load: 80           # CPU load to reach (starts at 0 and increases linearly)
+      workers: 2         # Start with 2 CPU workers
+      load: 30           # Initial CPU load percentage
+    memory:
+      workers: 2         # Start with 2 memory workers
+      size: "500MB"      # Start with 500MB memory stress
+  sequence:              # Gradual increase in stress
+    - duration: "1m"
+      stressors:
+        cpu:
+          workers: 4
+          load: 50       # Increase CPU load to 50%
+        memory:
+          workers: 4
+          size: "1GB"    # Increase memory to 1GB
+    - duration: "1m"
+      stressors:
+        cpu:
+          workers: 6
+          load: 70       # Increase CPU load to 70%
+        memory:
+          workers: 6
+          size: "1.5GB"  # Increase memory to 1.5GB
+    - duration: "1m"
+      stressors:
+        cpu:
+          workers: 8
+          load: 90       # Peak CPU load
+        memory:
+          workers: 8
+          size: "2GB"    # Peak memory stress
